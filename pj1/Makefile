@@ -10,7 +10,7 @@ LIBS	= -lpthread
 OBJECTS = sircd.o rtlib.o rtgrading.o csapp.o
 
 $(TARGET): $(OBJECTS)
-	$(LD) $(LFLAGS) $(LIBS) -o $@ $^
+	$(LD) $(LFLAGS)  -o $@ $^ $(LIBS)
 
 sircd.o: sircd.c rtlib.h rtgrading.h csapp.h
 	$(CC) $(CFLAGS) -c -o $@ $<
