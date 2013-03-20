@@ -5,9 +5,10 @@
 #include "csapp.h"
 #include <stdlib.h>
 
-/* Macros */
-#define MAX_MSG_TOKENS 10
-#define MAX_MSG_LEN 512
+#include "sircd.h"
+#include "ircservice.h"
+#include "network.h"
+
 
 /* Global variables */
 u_long curr_nodeID;
@@ -24,6 +25,7 @@ int main( int argc, char *argv[] )
 {
     init_node( argc, argv );
     printf( "I am node %lu and I listen on port %d for new users\n", curr_nodeID, curr_node_config_entry->irc_port );
+    init_listen();
     return 0;
 }
 
@@ -146,4 +148,14 @@ int tokenize( char const *in_buf, char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1] )
     }
 
     return i;
+}
+
+/* int init_server()
+ * initialize the server and start listening
+ * returns when cannot initialize the server
+ */
+int init_server()
+{
+    app_error("Not Implemented");
+    return -1;
 }

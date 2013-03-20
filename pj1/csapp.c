@@ -27,7 +27,7 @@ void dns_error(char *msg) /* dns-style error */
 
 void app_error(char *msg) /* application error */
 {
-    fprintf(stderr, "%s\n", msg);
+    fprintf(stderr, " App err %s\n", msg);
     exit(0);
 }
 /* $end errorfuns */
