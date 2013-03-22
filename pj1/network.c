@@ -16,6 +16,75 @@
 // static char  server_ip[MAX_MSG_LEN] = "175.186.60.211";
 int server_port = 6667;
 
+
+struct fdlist
+{
+    int fd;
+    struct fdlist *next;
+};
+
+struct fdlist *fdl;
+
+int init(int sockfd)
+{
+    fdl = (struct fdlist *)malloc(sizeof(struct fdlist));
+    fdl->fd = sockfd;
+    fdl->next = 0;
+    return 0;
+}
+
+int add(int sockfd)
+{
+    struct fdlist   *node;
+    node = fdl;
+    for(;node ->next != 0;node = node->next)
+    {
+        // assert(node->fd != sockfd);
+
+    }
+    struct fdlist *cur;
+    cur = (struct fdlist *)malloc(sizeof(struct fdlist));
+    node->next = cur;
+    cur->next = 0;
+    cur->fd = sockfd;
+    return 0;
+}
+
+int delete(int sockfd)
+{
+    struct fdlist *node;
+    node = fdl;
+    for(;node ->next != 0;node = node -> next)
+    {
+        // assert(node -> next != 0);
+        int fd = node -> next ->fd;
+        if(node -> next ->fd == sockfd) 
+        {
+            struct fdlist *cur;
+            cur = node->next;
+            node->next = cur->next;
+            free(cur);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int addtoset(fd_set *set)
+{
+    struct fdlist *node;
+    int max = 0;
+    for(node = fdl; node != 0; node = node -> next)
+    {
+        int fd = node->fd;
+        if(fd > max) 
+        {
+            max = fd;
+        }
+        FD_SET(fd, set);
+    }
+    return max;
+}
 int init_listen()
 {
     int sockfd;
@@ -27,32 +96,50 @@ int init_listen()
     fd_set fds;
     int ready;
     int max_fd;
+    struct fdlist *cur;
 
     sockfd = Open_listenfd(server_port);
-
+    int opts = 1;
+    setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&opts,sizeof(opts));
+    init(sockfd);
     FD_ZERO(&fds);
-    // FD_SET(sockfd, &read_fds);
-    // max_fd = sockfd + 1;
-
     while(1)
     {
-        FD_SET(sockfd, &fds);
-        max_fd = sockfd + 1;
+        // FD_SET(sockfd, &fds);
+        max_fd = addtoset(&fds)+1;
+        // printf("max:%d\n",max_fd);
         ready = Select(max_fd, &fds, 0, 0, 0);
-        if(ready == 0)
+        if(ready == 0){
             continue;
+        }
+        for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
+        {
+            int fd = cur->next->fd;
+            if(FD_ISSET(fd,&fds)) {
+                // printf("select!:%d\n",cur->fd);
+                if(thread(fd) == -1) {
+                    printf("delete!%d\n",fd);
+                    delete(fd);
+                }
+            }
+        }
         if(FD_ISSET(sockfd, &fds)){
+            printf("detect!\n");
             csock = Accept(sockfd, (struct sockaddr*) &caddr, &size);
             if(getpeername(csock, (struct sockaddr*) &caddr, &size) == 0)
             {
                 printf("socket:%d\n",csock);
                 printf("ip:%s\n",inet_ntoa(caddr.sin_addr));
+                add(csock);
+                // printf("added!");
                 // thread(csock);
             }
         }
+
     }
     return 0;
 }
+
 int thread(int fd)
 {
     char recvbuf[MAX_MSG_LEN + 1];
@@ -61,10 +148,13 @@ int thread(int fd)
     int length = 1;
     bzero(&recvbuf, sizeof(recvbuf));
     length = Rio_readlineb(&rp,recvbuf,MAX_MSG_LEN);
-
+    if(length == 0)
+    {
+        return -1;
+    }
     printf("%s",recvbuf);
 
     Rio_writen(fd,recvbuf,strlen(recvbuf));//echo it
-    Close(fd);
+    // Close(fd);
     return 0;
 }
