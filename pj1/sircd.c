@@ -5,9 +5,9 @@
 #include "csapp.h"
 #include <stdlib.h>
 
-#include "sircd.h"
+// #include "sircd.h"
 #include "ircservice.h"
-#include "network.h"
+// #include "network.h"
 
 
 /* Global variables */

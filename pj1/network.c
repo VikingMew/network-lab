@@ -5,7 +5,8 @@
 #include <string.h>
 
 #include "ircservice.h"
-#include "util.h"
+// #include "util.h"
+// #include "network.h"
 // #define MAX_MSG_LEN 512
 #define LENPOOL 1
 
@@ -13,16 +14,10 @@
 int server_port = 6667;
 
 
-struct fdlist
-{
-    int fd;
-    char[] nickname;
-    struct fdlist *next;
-};
 
 struct fdlist *fdl;
 
-int thread(int fd);
+int thread(struct fdlist *cur);
 
 int init(int sockfd)
 {
@@ -32,7 +27,7 @@ int init(int sockfd)
     return 0;
 }
 
-int add(int sockfd)
+int add(int sockfd,char* ipaddress)
 {
     struct fdlist   *node;
     node = fdl;
@@ -43,9 +38,11 @@ int add(int sockfd)
     }
     struct fdlist *cur;
     cur = (struct fdlist *)malloc(sizeof(struct fdlist));
+    bzero(cur,sizeof(struct fdlist));
     node->next = cur;
     cur->next = 0;
     cur->fd = sockfd;
+    strcpy(cur->ipaddress,ipaddress);
     return 0;
 }
 
@@ -69,20 +66,16 @@ int delete(int sockfd)
     return -1;
 }
 
-struct fdlist findbynickname(char nickname[MAX_MSG_LEN + 1])
+struct fdlist* findbynickname(char nickname[MAX_MSG_LEN + 1])
 {
     struct fdlist *node;
     node = fdl;
     for(;node ->next != 0;node = node -> next)
     {
         // assert(node -> next != 0);
-        if(str) 
+        if(!strcmp(node->nickname,nickname)) 
         {
-            struct fdlist *cur;
-            cur = node->next;
-            node->next = cur->next;
-            free(cur);
-            
+            return node;
         }
     }
     return 0;
@@ -136,7 +129,7 @@ int init_server()
             int fd = cur->next->fd;
             if(FD_ISSET(fd,&fds)) {
                 // printf("select!:%d\n",cur->fd);
-                if(thread(cur) == -1) {
+                if(thread(cur->next) == -1) {
                     printf("delete!%d\n",fd);
                     Close(fd);
                     delete(fd);
@@ -150,7 +143,10 @@ int init_server()
             {
                 printf("socket:%d\n",csock);
                 printf("ip:%s\n",inet_ntoa(caddr.sin_addr));
-                add(csock);
+                char ip_address[MAX_MSG_LEN+1];
+                bzero(&ip_address, sizeof(ip_address));
+                sprintf(ip_address,"%s",inet_ntoa(caddr.sin_addr));
+                add(csock,ip_address);
             }
         }
 
@@ -158,31 +154,47 @@ int init_server()
     return 0;
 }
 
-int thread(struct fdlist* cur)
+int thread(struct fdlist *cur)
 {
     char recvbuf[MAX_MSG_LEN + 1];
     char sendbuf[MAX_MSG_LEN + 1];
-    char globbuf[MAX_MSG_LEN + 1];
     rio_t rp;
+    int fd = cur->fd;
+    int ret = 0;
     rio_readinitb(&rp,fd);
     int length = 1;
     bzero(&recvbuf, sizeof(recvbuf));
-    bzero(&sendbuf, sizeof(recvbuf));
-    bzero(&globbuf, sizeof(globbuf));
+    bzero(&sendbuf, sizeof(sendbuf));
     length = Rio_readlineb(&rp,recvbuf,MAX_MSG_LEN);
-    printf("%s",recvbuf);
-    ret = irc(recvbuf,sendbuf,cur);
-    if(ret == 362) {
-        return -1;
+    int i  = irc(recvbuf,sendbuf,cur);
+    if(i == 362) {
+        ret = -1;
     }
     Rio_writen(fd,sendbuf,strlen(sendbuf));
-    return 0;
+    return ret;
 }
 
 int boardcast(char message[MAX_MSG_LEN+1]) {
-
+    return 0;
 }
 
 int boardcastbut(char message[MAX_MSG_LEN+1],int fd) {
+    struct fdlist *cur;
+    for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
+    {
+        if (fd != cur->next->fd) {
+            Rio_writen(cur->next->fd,message,strlen(message));
+        }
+    }
+    return 0;
+}
 
+int boardcastchannel(char message[MAX_MSG_LEN+1],char channel[MAX_MSG_LEN + 1])
+{
+    return 0;
+}
+int sendmessage(char message[MAX_MSG_LEN+1],int fd)
+{
+    Rio_writen(fd,message,strlen(message));
+    return 0;
 }

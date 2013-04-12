@@ -1,12 +1,42 @@
 #include "csapp.h"
 #include "ircservice.h"
 #include "sircd.h"
-#include "network.h"
+// #include "network.h"
 
 extern struct fdlist *fdl;
 
+int setmessage(int code,char command[MAX_MSG_LEN+1],
+             char sendbuf[MAX_MSG_LEN+1],struct fdlist *cur)
+{
+    if(code == RPL_MOTDSTART) {
+        sprintf(sendbuf,":%s 375 %s :- %s Message of the day -\r\n",
+            SERVERNAME,cur->nickname,SERVERNAME);
+    }
+    if(code == RPL_MOTD) {
+        sprintf(sendbuf,":%s 372 %s :- I haven't done my 15-441 yet!\r\n",
+            SERVERNAME,cur->nickname);
+    }
+    if(code == RPL_ENDOFMOTD) {
+        sprintf(sendbuf,":%s 376 %s :End of /MOTD command\r\n",
+            SERVERNAME,cur->nickname);
+    }
+}
 
-/* int setnickname(char* nickname)
+int motd(struct fdlist *cur) 
+{
+    char buf[MAX_MSG_LEN+1];
+    bzero(&buf,sizeof(buf));
+    setmessage(RPL_MOTDSTART,"",buf,cur);
+    sendmessage(buf,cur->fd);
+    bzero(&buf,sizeof(buf));
+    setmessage(RPL_MOTD,"",buf,cur);
+    sendmessage(buf,cur->fd);
+    bzero(&buf,sizeof(buf));
+    setmessage(RPL_ENDOFMOTD,"",buf,cur);
+    sendmessage(buf,cur->fd);
+    return 0;
+}
+/* int nick(char* nickname)
  *
  * set the nickname to the curclient
  * Command:   NICK
@@ -15,10 +45,7 @@ extern struct fdlist *fdl;
  * return errcode when ERR
  * return 0 while success
  */
-
-
 int nick(char nickname[MAX_MSG_LEN+1],
-         char sendbuf[MAX_MSG_LEN+1],
          struct fdlist *cur)
 {
     if(strlen(nickname) == 0)
@@ -28,12 +55,16 @@ int nick(char nickname[MAX_MSG_LEN+1],
     struct fdlist *node = findbynickname(nickname);
     if(node != NULL)
     {
-        return ERR_NICKNAMEINUSE;
+        return ERR_NICKNAMEINUSE;   //via 15-441
     }
     strcpy(cur->nickname,nickname);
     char buf[MAX_MSG_LEN + 1];
-    sprintf(buf,":%s!%s NICK %s",nickname,SERVERNAME,nickname);
+    sprintf(buf,":%s!%s NICK %s\n",nickname,SERVERNAME,nickname);
     boardcastbut(buf,cur->fd);
+    if(strlen(cur->username))
+    {
+        motd(cur);
+    }
     return 0;
     // app_error("Not Implemented");
     // return -1;
@@ -48,10 +79,33 @@ int nick(char nickname[MAX_MSG_LEN+1],
  * return -1 while error
  * return 0 while success
  */
-int user()
+int user(char username[MAX_MSG_LEN+1],
+         char hostname[MAX_MSG_LEN+1], //ignored by 15-441
+         char servername[MAX_MSG_LEN+1],
+         char realname[MAX_MSG_LEN+1],
+         struct fdlist *cur)
 {
-    app_error("Not Implemented");
-    return -1;
+    if(!(strlen(username) && strlen(hostname) && 
+         strlen(servername) && strlen(realname)))
+    {
+        return ERR_NEEDMOREPARAMS;
+    }
+    if(strlen(cur->username))
+    {
+        return ERR_ALREADYREGISTRED;
+
+    }
+    strcpy(cur->username,username);
+    strcpy(cur->hostname,cur->ipaddress); //15-441
+    strcpy(cur->servername,username);
+    strcpy(cur->username,username);
+    if(strlen(cur->nickname))
+    {
+        motd(cur);
+    }
+    return 0;
+    // app_error("Not Implemented");
+    // return -1;
 }
 
 /* int quit()
@@ -64,10 +118,9 @@ int user()
  * return 0 
  */
 int quit(char msg[MAX_MSG_LEN+1],
-         char sendbuf[MAX_MSG_LEN+1],
          struct fdlist *cur)
 {
-    sendbuf[0] = 0;
+    // sendbuf[0] = 0;
     char buf[MAX_MSG_LEN+1];
     char nickname[MAX_MSG_LEN+1];
     char sendmsg[MAX_MSG_LEN+1];
@@ -80,7 +133,7 @@ int quit(char msg[MAX_MSG_LEN+1],
     //     strcpy(sendmsg,msg);
     // }
     // strcpy(nickname,cur->nickname);
-    // sprintf(buf,":%s!%s QUIT %s",nickname,"localhost",sendmsg);
+    // sprintf(buf,":%s!%s QUIT %s\n",nickname,"localhost",sendmsg);
     // boardcast(buf);
     return 0;
     // app_error("Not Implemented");
@@ -92,10 +145,7 @@ int quit(char msg[MAX_MSG_LEN+1],
  * Command:    JOIN
  * Parameters:     <channel>{,<channel>} [<key>{,<key>}]
  * error 
- *   ERR_NEEDMOREPARAMS  ERR_BANNEDFROMCHAN
- *   ERR_INVITEONLYCHAN  ERR_BADCHANNELKEY
- *   ERR_CHANNELISFULL   ERR_BADCHANMASK
- *   ERR_NOSUCHCHANNEL   ERR_TOOMANYCHANNELS
+ *   ERR_NEEDMOREPARAMS 
  *   RPL_TOPIC           RPL_NAMREPLY
  *   RPL_ENDOFNAMES 
  * return ?? when error
@@ -103,6 +153,7 @@ int quit(char msg[MAX_MSG_LEN+1],
  */
 int join()
 {
+
     app_error("Not Implemented");
     return -1;
 }
@@ -131,9 +182,12 @@ int part()
  * return ?? when error
  * return 0 on success
  */
-int list()
+int list(char channel[MAX_MSG_LEN+1],
+         char key[MAX_MSG_LEN+1]) //ignore by 15-441
 {
-
+    const char *current = in_buf;
+    app_error("Not Implemented");
+    return -1;
 }
 /* int privmsg()
  *
@@ -149,7 +203,8 @@ int list()
  */
 int privmsg()
 {
-
+    app_error("Not Implemented");
+    return -1;
 }
 /* int who()
  *
@@ -163,8 +218,11 @@ int privmsg()
  */
 int who()
 {
-
+    app_error("Not Implemented");
+    return -1;
 }
+
+
 /* int parse_msg()
  * parse the tokenized message to the functions
  * call the functions should be called.
@@ -194,24 +252,34 @@ int parse_msg(char token[MAX_MSG_TOKENS][MAX_MSG_LEN+1],
               struct fdlist *cur)
 {
     // app_error("Not Implemented");
+    int i = ERR_UNKNOWNCOMMAND; 
     if(length == 1 && !strcmp(token[0],""))
     {
-        char buf[MAX_MSG_LEN+1];
-        sprintf(buf,":%s!%s QUIT :Connection closed",cur->nickname,"localhost");
-        boardcastbut(buf,cur->fd);
-        return RPL_CLOSING;
-    }
+        // char buf[MAX_MSG_LEN+1];
+        // bzero(&buf, sizeof(buf));
+        // sprintf(buf,":%s!%s QUIT :Connection closed\n",cur->nickname,"localhost");
+        // boardcastbut(buf,cur->fd);
+        i = RPL_CLOSING;
+    } else
     if(!strcmp(token[0],"QUIT"))
     {
-        quit(token[1],sendbuf,cur);
-        return RPL_CLOSING;
-    }
+        quit(token[1],cur);
+        i = RPL_CLOSING;
+    } else
     if(!strcmp(token[0],"NICK"))
     {
-        int i = nick(token[1],sendbuf,cur);
-        return i;
+        i = nick(token[1],cur);
+    } else
+    if(!strcmp(token[0],"USER"))
+    {
+        i = user(token[1],token[2],token[3],token[4],cur);
     }
-    return -1;
+    if(!strcmp(token[0],"JOIN"))
+    {
+        i = join(token[1],token[2],cur);
+    }
+    setmessage(i,token[0],sendbuf,cur);
+    return i;
 }
 
 /*
@@ -234,25 +302,24 @@ int tokenize( char const *in_buf, char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1])
     /* Possible Bug: handling of too many args */
     while (!done && (i<MAX_MSG_TOKENS)) {
         char *next = strchr(current, ' ');
+        if (next) {
+            memcpy(tokens[i], current, next-current);
+            tokens[i][next-current] = '\0';
+            current = next + 1;   /* move over the space */
+            ++i;
 
-    if (next) {
-        memcpy(tokens[i], current, next-current);
-        tokens[i][next-current] = '\0';
-        current = next + 1;   /* move over the space */
-        ++i;
-
-        /* trailing token */
-        if (*current == ':') {
-            ++current;
-        strcpy(tokens[i], current);
-        ++i;
-        done = 1;
+            /* trailing token */
+            if (*current == ':') {
+                ++current;
+            strcpy(tokens[i], current);
+            ++i;
+            done = 1;
+            }
+        } else {
+            strcpy(tokens[i], current);
+            ++i;
+            done = 1;
         }
-    } else {
-        strcpy(tokens[i], current);
-        ++i;
-        done = 1;
-    }
     }
 
     return i;
@@ -306,11 +373,17 @@ int irc(char recvbuf[MAX_MSG_LEN+1],
         char sendbuf[MAX_MSG_LEN+1],struct fdlist* cur)
 {
     // get_msg(sendbuf,recvbuf);//echo it
+    printf("%s",recvbuf);
     int tok_len;
     char tok[MAX_MSG_TOKENS][MAX_MSG_LEN+1];
+    char recvbuf2[MAX_MSG_LEN+1];
     bzero(&tok, sizeof(tok));
-    tok_len = tokenize(recvbuf,tok);
-    int i = parse_msg(tok,tok_len,char sendbuf[MAX_MSG_LEN+1],cur)
+    bzero(&recvbuf2, sizeof(recvbuf2));
+
+    get_msg(recvbuf, recvbuf2);
+    tok_len = tokenize(recvbuf2,tok);
+    int i = parse_msg(tok,tok_len,sendbuf,cur);
+    printf("%d\n",i);
     return i;
     
 }
