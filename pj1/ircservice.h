@@ -8,7 +8,7 @@
 #define RPL_MOTDSTART 375
 #define RPL_MOTD 372
 #define RPL_ENDOFMOTD 376
-
+#
 
 //code from NICK
 #define ERR_NONICKNAMEGIVEN 431
@@ -20,7 +20,9 @@
 #define ERR_UNKNOWNCOMMAND 421
 
 //code from JOIN
-//All ignored by 15-441
+#define RPL_NAMEREPLY 353
+#define RPL_ENDOFNAMES 366
+//Error all ignored by 15-441
 
 // int nick(char* nickname);
 // int user();

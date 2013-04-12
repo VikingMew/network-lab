@@ -8,30 +8,48 @@ extern struct fdlist *fdl;
 int setmessage(int code,char command[MAX_MSG_LEN+1],
              char sendbuf[MAX_MSG_LEN+1],struct fdlist *cur)
 {
-    if(code == RPL_MOTDSTART) {
+    if(code == RPL_MOTDSTART)
+    {
         sprintf(sendbuf,":%s 375 %s :- %s Message of the day -\r\n",
             SERVERNAME,cur->nickname,SERVERNAME);
     }
-    if(code == RPL_MOTD) {
-        sprintf(sendbuf,":%s 372 %s :- I haven't done my 15-441 yet!\r\n",
+    if(code == RPL_MOTD)
+    {
+        sprintf(sendbuf,":%s 372 %s :- I have done my 15-441 yeah!\r\n",
             SERVERNAME,cur->nickname);
     }
-    if(code == RPL_ENDOFMOTD) {
+    if(code == RPL_ENDOFMOTD)
+    {
         sprintf(sendbuf,":%s 376 %s :End of /MOTD command\r\n",
             SERVERNAME,cur->nickname);
+    }
+    if(code == ERR_UNKNOWNCOMMAND)
+    {
+        sprintf(sendbuf,":%s 421 %s %s :Unknown command\r\n",
+            SERVERNAME,cur->nickname,command);
+    }
+    if(code == ERR_NEEDMOREPARAMS)
+    {
+        sprintf(sendbuf,":%s 461 %s %s :Not enough parameters\r\n",
+            SERVERNAME,cur->nickname,command);
+    }
+    if(code == RPL_ENDOFNAMES)   //'command' is channelname here!!!!
+    {
+        sprintf(sendbuf,":%s 366 %s %s :End of /NAMES list\r\n",
+            SERVERNAME,cur->nickname,command);
     }
 }
 
 int motd(struct fdlist *cur) 
 {
     char buf[MAX_MSG_LEN+1];
-    bzero(&buf,sizeof(buf));
+    bzero(&buf, sizeof(buf));
     setmessage(RPL_MOTDSTART,"",buf,cur);
     sendmessage(buf,cur->fd);
-    bzero(&buf,sizeof(buf));
+    bzero(&buf, sizeof(buf));
     setmessage(RPL_MOTD,"",buf,cur);
     sendmessage(buf,cur->fd);
-    bzero(&buf,sizeof(buf));
+    bzero(&buf, sizeof(buf));
     setmessage(RPL_ENDOFMOTD,"",buf,cur);
     sendmessage(buf,cur->fd);
     return 0;
@@ -124,6 +142,7 @@ int quit(char msg[MAX_MSG_LEN+1],
     char buf[MAX_MSG_LEN+1];
     char nickname[MAX_MSG_LEN+1];
     char sendmsg[MAX_MSG_LEN+1];
+    //TODO: QUIT MSG
     // if(strlen(msg) == 0)
     // {
     //     strcpy(sendmsg,cur->nickname);
@@ -151,9 +170,51 @@ int quit(char msg[MAX_MSG_LEN+1],
  * return ?? when error
  * return 0 on success
  */
-int join()
+int join(char channel[MAX_MSG_LEN+1],
+         char key[MAX_MSG_LEN+1],struct fdlist *cur) //ignore by 15-441
 {
+    if(!strlen(channel))
+    {
+        return ERR_NEEDMOREPARAMS;
+    }
+    char *current = channel;
+    printf("%s",channel);
+    char channelname[MAX_MSG_LEN+1];
+    bzero(&channelname,sizeof(channelname));
+    while(strlen(channelname) == 0) {
+        bzero(&channelname,sizeof(channelname));
+        char *next = strchr(current, ' ');
+        if (next) {
+            memcpy(channelname, current, next-current); // get the parameter
+            current = next + 1;
+        }
+        else 
+        {
+            strcpy(channelname, current);
+            break;
+        }
+    }
+    if(!strlen(channelname))
+    {
+        return ERR_NEEDMOREPARAMS;
+    }
+    if(channelname[0] != '&' && channelname[0] != '#')
+    {
+        return ERR_NEEDMOREPARAMS;
+    }
+    char oldchannel[MAX_MSG_LEN+1];
+    if(strlen(cur->channel)) 
+    {
+        strcpy(oldchannel, cur->channel);
+        //  TODO: PART from old
+    }
+    bzero(cur->channel, sizeof(cur->channel));
+    strcpy(cur->channel, channelname);
+    char buf[MAX_MSG_LEN+1];
+    sprintf(buf, ":%s JOIN %s", cur->nickname, channelname);
+    boardcastchannel(buf,channelname);
 
+    return 0;
     app_error("Not Implemented");
     return -1;
 }
@@ -182,10 +243,9 @@ int part()
  * return ?? when error
  * return 0 on success
  */
-int list(char channel[MAX_MSG_LEN+1],
-         char key[MAX_MSG_LEN+1]) //ignore by 15-441
+int list()
 {
-    const char *current = in_buf;
+
     app_error("Not Implemented");
     return -1;
 }

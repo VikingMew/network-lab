@@ -175,7 +175,11 @@ int thread(struct fdlist *cur)
 }
 
 int boardcast(char message[MAX_MSG_LEN+1]) {
-    return 0;
+    struct fdlist *cur;
+    for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
+    {
+        Rio_writen(cur->next->fd,message,strlen(message));
+    }
 }
 
 int boardcastbut(char message[MAX_MSG_LEN+1],int fd) {
@@ -191,6 +195,13 @@ int boardcastbut(char message[MAX_MSG_LEN+1],int fd) {
 
 int boardcastchannel(char message[MAX_MSG_LEN+1],char channel[MAX_MSG_LEN + 1])
 {
+    struct fdlist *cur;
+    for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
+    {
+        if (!strcmp(channel,cur->next->channel)) {
+            Rio_writen(cur->next->fd,message,strlen(message));
+        }
+    }
     return 0;
 }
 int sendmessage(char message[MAX_MSG_LEN+1],int fd)
