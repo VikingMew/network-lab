@@ -22,8 +22,13 @@
 //code from JOIN
 #define RPL_NAMEREPLY 353
 #define RPL_ENDOFNAMES 366
-//Error all ignored by 15-441
+#define ERR_TOOMANYCHANNELS 405
 
+//code from WHO
+#define RPL_WHOREPLY 352
+#define RPL_ENDOFWHO 315
+
+//Error all ignored by 15-441
 // int nick(char* nickname);
 // int user();
 // int quit();

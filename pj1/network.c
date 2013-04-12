@@ -167,14 +167,15 @@ int thread(struct fdlist *cur)
     bzero(&sendbuf, sizeof(sendbuf));
     length = Rio_readlineb(&rp,recvbuf,MAX_MSG_LEN);
     int i  = irc(recvbuf,sendbuf,cur);
-    if(i == 362) {
+    if(i == RPL_CLOSING) {
         ret = -1;
     }
     Rio_writen(fd,sendbuf,strlen(sendbuf));
     return ret;
 }
 
-int boardcast(char message[MAX_MSG_LEN+1]) {
+int boardcast(char message[MAX_MSG_LEN+1])
+{
     struct fdlist *cur;
     for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
     {
@@ -182,7 +183,8 @@ int boardcast(char message[MAX_MSG_LEN+1]) {
     }
 }
 
-int boardcastbut(char message[MAX_MSG_LEN+1],int fd) {
+int boardcastbut(char message[MAX_MSG_LEN+1],int fd) // wont boardcast to fd
+{  
     struct fdlist *cur;
     for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
     {

@@ -5,10 +5,7 @@
 
 extern struct fdlist *fdl;
 
-int getnames(char channel[MAX_MSG_LEN+1],char buf[MAX_MSG_LEN+1])
-{
 
-}
 int setmessage(int code,char command[MAX_MSG_LEN+1],
              char sendbuf[MAX_MSG_LEN+1],struct fdlist *cur)
 {
@@ -37,9 +34,19 @@ int setmessage(int code,char command[MAX_MSG_LEN+1],
         sprintf(sendbuf,":%s 461 %s %s :Not enough parameters\r\n",
             SERVERNAME,cur->nickname,command);
     }
+    if(code == ERR_TOOMANYCHANNELS)
+    {
+        sprintf(sendbuf,":%s 405 %s %s :\r\n",
+            SERVERNAME,cur->nickname,command);
+    }
     if(code == RPL_ENDOFNAMES)   //'command' is channelname here!!!!
     {
         sprintf(sendbuf,":%s 366 %s %s :End of /NAMES list\r\n",
+            SERVERNAME,cur->nickname,command);
+    }
+    if(code == RPL_ENDOFWHO)   //'command' is requestd name here!!!!
+    {
+        sprintf(sendbuf,":%s 315 %s %s :End of /WHO list\r\n",
             SERVERNAME,cur->nickname,command);
     }
 }
@@ -81,7 +88,7 @@ int nick(char nickname[MAX_MSG_LEN+1],
     }
     strcpy(cur->nickname,nickname);
     char buf[MAX_MSG_LEN + 1];
-    sprintf(buf,":%s!%s NICK %s\n",nickname,SERVERNAME,nickname);
+    sprintf(buf,":%s!%s NICK %s\r\n",nickname,SERVERNAME,nickname);
     boardcastbut(buf,cur->fd);
     if(strlen(cur->username))
     {
@@ -162,7 +169,43 @@ int quit(char msg[MAX_MSG_LEN+1],
     // app_error("Not Implemented");
     // return -1;
 }
-
+int names(char channel[MAX_MSG_LEN+1],struct fdlist *cur)
+{
+    struct fdlist *now = fdl;
+    char buf[MAX_MSG_LEN + 1];
+    bzero(&buf, sizeof(buf));
+    sprintf(buf,":%s 353 %s = %s :",SERVERNAME,
+                cur->nickname,channel);
+    while(now->next != 0)
+    {
+        if(!strcmp(now->next->channel,channel)) {
+            if(!strlen(buf))
+            {
+                bzero(&buf, sizeof(buf));
+                sprintf(buf,":%s 353 %s = %s :",SERVERNAME,
+                            cur->nickname,channel);
+            }
+            if((strlen(buf) + strlen(now->nickname)) > MAX_MSG_LEN-5)
+            {
+                strcat(buf,"\r\n");
+                sendmessage(buf,cur->fd);
+                bzero(&buf, sizeof(buf));
+                sprintf(buf,":%s 353 %s = %s :",SERVERNAME,
+                            cur->nickname,channel);
+            }
+            strcat(buf,now->next->nickname);
+        }
+        now = now -> next;
+    }
+    if(strlen(buf))
+    {
+        strcat(buf,"\r\n");
+        sendmessage(buf,cur->fd);
+    }
+    bzero(&buf, sizeof(buf));
+    setmessage(RPL_ENDOFNAMES,channel,buf,cur);
+    sendmessage(buf,cur->fd);
+}
 /* int join()
  *
  * Command:    JOIN
@@ -200,7 +243,7 @@ int join(char channel[MAX_MSG_LEN+1],
             break;
         }
     }
-    if(!strlen(channelname))
+    if(!strlen(channelname) || strlen(channelname) > 10) // up to 9 char
     {
         return ERR_NEEDMOREPARAMS;
     }
@@ -217,13 +260,9 @@ int join(char channel[MAX_MSG_LEN+1],
     bzero(cur->channel, sizeof(cur->channel));
     strcpy(cur->channel, channelname);
     char buf[MAX_MSG_LEN+1];
-    sprintf(buf, ":%s JOIN %s", cur->nickname, channelname);
+    sprintf(buf, ":%s JOIN %s\r\n", cur->nickname, channelname);
     boardcastchannel(buf,channelname);
-    bzero(&buf, sizeof(buf));
-    sendmessage(buf,cur->fd);
-    bzero(&buf, sizeof(buf));
-    setmessage(RPL_ENDOFNAMES,channelname,buf,cur);
-    sendmessage(buf,cur->fd);
+    names(channelname,cur);
     return 0;
     app_error("Not Implemented");
     return -1;
@@ -286,8 +325,39 @@ int privmsg()
  * return ?? when error
  * return 0 on success
  */
-int who()
+int who(char request[MAX_MSG_LEN+1],
+        char sign[MAX_MSG_LEN+1], //ignored by 15-441
+        struct fdlist *cur)
 {
+    // char channelist[200][MAX_MSG_LEN+1]; //200 is the maxmium to the channel 
+    char requestlist[200][MAX_MSG_LEN+1];
+    bzero(&channellist,sizeof(channellist));
+    if(!strlen(request))
+    {
+        struct fdlist *now = fdl;
+        while(now->next != 0)
+        {
+            bzero(&buf, sizeof(buf));
+            sprintf(buf,":%s 352 %s %s %s %s %s %s H :0 %s\r\n",
+                        SERVERNAME,
+                        cur->nickname,
+                        now->channel,
+                        now->username,
+                        now->hostname,
+                        now->servername,
+                        now->nickname,
+                        now->realname);
+            sendmessage(buf,cur->fd);
+            now = now -> next;
+        }
+        bzero(&buf, sizeof(buf));
+        setmessage(RPL_ENDOFWHO,channel,buf,cur);
+        sendmessage(buf,cur->fd);
+    }
+    else
+    {
+
+    }
     app_error("Not Implemented");
     return -1;
 }
@@ -347,6 +417,10 @@ int parse_msg(char token[MAX_MSG_TOKENS][MAX_MSG_LEN+1],
     if(!strcmp(token[0],"JOIN"))
     {
         i = join(token[1],token[2],cur);
+    }
+    if(!strcmp(token[0],"WHO"))
+    {
+        i = who(token[1],token[2],cur);
     }
     setmessage(i,token[0],sendbuf,cur);
     return i;
