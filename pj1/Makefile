@@ -7,7 +7,7 @@ CFLAGS	= -O2 -Wall
 LFLAGS	= 
 LIBS	= -lpthread
 
-OBJECTS = sircd.o rtlib.o rtgrading.o csapp.o network.o ircservice.o
+OBJECTS = sircd.o rtlib.o rtgrading.o csapp.o network.o ircservice.o 
 
 $(TARGET): $(OBJECTS)
 	$(LD) $(LFLAGS)  -o $@ $^ $(LIBS)

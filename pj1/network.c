@@ -2,15 +2,11 @@
 #include <sys/socket.h>
 #include <sys/types.h> 
 #include "csapp.h"
-
-// #include <stdlib.h>
 #include <string.h>
-// #include <stdio.h>
-// #include <errno.h>
-// #include <sys/times.h>
-// #include <unistd.h>
 
-#define MAX_MSG_LEN 512
+#include "ircservice.h"
+#include "util.h"
+// #define MAX_MSG_LEN 512
 #define LENPOOL 1
 
 // static char  server_ip[MAX_MSG_LEN] = "175.186.60.211";
@@ -20,10 +16,13 @@ int server_port = 6667;
 struct fdlist
 {
     int fd;
+    char[] nickname;
     struct fdlist *next;
 };
 
 struct fdlist *fdl;
+
+int thread(int fd);
 
 int init(int sockfd)
 {
@@ -58,7 +57,7 @@ int delete(int sockfd)
     {
         // assert(node -> next != 0);
         int fd = node -> next ->fd;
-        if(node -> next ->fd == sockfd) 
+        if(fd == sockfd) 
         {
             struct fdlist *cur;
             cur = node->next;
@@ -68,6 +67,25 @@ int delete(int sockfd)
         }
     }
     return -1;
+}
+
+struct fdlist findbynickname(char nickname[MAX_MSG_LEN + 1])
+{
+    struct fdlist *node;
+    node = fdl;
+    for(;node ->next != 0;node = node -> next)
+    {
+        // assert(node -> next != 0);
+        if(str) 
+        {
+            struct fdlist *cur;
+            cur = node->next;
+            node->next = cur->next;
+            free(cur);
+            
+        }
+    }
+    return 0;
 }
 
 int addtoset(fd_set *set)
@@ -85,7 +103,8 @@ int addtoset(fd_set *set)
     }
     return max;
 }
-int init_listen()
+
+int init_server()
 {
     int sockfd;
     int csock;
@@ -117,8 +136,9 @@ int init_listen()
             int fd = cur->next->fd;
             if(FD_ISSET(fd,&fds)) {
                 // printf("select!:%d\n",cur->fd);
-                if(thread(fd) == -1) {
+                if(thread(cur) == -1) {
                     printf("delete!%d\n",fd);
+                    Close(fd);
                     delete(fd);
                 }
             }
@@ -131,8 +151,6 @@ int init_listen()
                 printf("socket:%d\n",csock);
                 printf("ip:%s\n",inet_ntoa(caddr.sin_addr));
                 add(csock);
-                // printf("added!");
-                // thread(csock);
             }
         }
 
@@ -140,21 +158,31 @@ int init_listen()
     return 0;
 }
 
-int thread(int fd)
+int thread(struct fdlist* cur)
 {
     char recvbuf[MAX_MSG_LEN + 1];
+    char sendbuf[MAX_MSG_LEN + 1];
+    char globbuf[MAX_MSG_LEN + 1];
     rio_t rp;
     rio_readinitb(&rp,fd);
     int length = 1;
     bzero(&recvbuf, sizeof(recvbuf));
+    bzero(&sendbuf, sizeof(recvbuf));
+    bzero(&globbuf, sizeof(globbuf));
     length = Rio_readlineb(&rp,recvbuf,MAX_MSG_LEN);
-    if(length == 0)
-    {
+    printf("%s",recvbuf);
+    ret = irc(recvbuf,sendbuf,cur);
+    if(ret == 362) {
         return -1;
     }
-    printf("%s",recvbuf);
-
-    Rio_writen(fd,recvbuf,strlen(recvbuf));//echo it
-    // Close(fd);
+    Rio_writen(fd,sendbuf,strlen(sendbuf));
     return 0;
+}
+
+int boardcast(char message[MAX_MSG_LEN+1]) {
+
+}
+
+int boardcastbut(char message[MAX_MSG_LEN+1],int fd) {
+
 }

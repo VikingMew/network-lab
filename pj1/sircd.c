@@ -18,14 +18,14 @@ rt_config_entry_t *curr_node_config_entry; /* The config_entry for this node */
 /* Function prototypes */
 void init_node( int argc, char *argv[] );
 size_t get_msg( char *buf, char *msg );
-int tokenize( char const *in_buf, char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1] );
+// int tokenize( char const *in_buf, char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1] );
 
 /* Main */
 int main( int argc, char *argv[] )
 {
     init_node( argc, argv );
     printf( "I am node %lu and I listen on port %d for new users\n", curr_nodeID, curr_node_config_entry->irc_port );
-    init_listen();
+    init_server();
     return 0;
 }
 
@@ -62,100 +62,4 @@ void init_node( int argc, char *argv[] )
         printf( "Invalid NodeID\n" );
         exit(1);
     }
-}
-
-
-/*
- * size_t get_msg( char *buf, char *msg )
- *
- * char *buf : the buffer containing the text to be parsed
- * char *msg : a user malloc'ed buffer to which get_msg will copy the message
- *
- * Copies all the characters from buf[0] up to and including the first instance
- * of the IRC endline characters "\r\n" into msg.  msg should be at least as
- * large as buf to prevent overflow.
- *
- * Returns the size of the message copied to msg.
- */
-size_t get_msg(char *buf, char *msg)
-{
-    char *end;
-    int  len;
-
-    /* Find end of message */
-    end = strstr(buf, "\r\n");
-
-    if( end )
-    {
-        len = end - buf + 2;
-    }
-    else
-    {
-        /* Could not find \r\n, try searching only for \n */
-        end = strstr(buf, "\n");
-	if( end )
-	    len = end - buf + 1;
-	else
-	    return -1;
-    }
-
-    /* found a complete message */
-    memcpy(msg, buf, len);
-    msg[end-buf] = '\0';
-
-    return len;	
-}
-
-/*
- * int tokenize( char const *in_buf, char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1] )
- *
- * A strtok() variant.  If in_buf is a space-separated list of words,
- * then on return tokens[X] will contain the Xth word in in_buf.
- *
- * Note: You might want to look at the first word in tokens to
- * determine what action to take next.
- *
- * Returns the number of tokens parsed.
- */
-int tokenize( char const *in_buf, char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1] )
-{
-    int i = 0;
-    const char *current = in_buf;
-    int  done = 0;
-
-    /* Possible Bug: handling of too many args */
-    while (!done && (i<MAX_MSG_TOKENS)) {
-        char *next = strchr(current, ' ');
-
-	if (next) {
-	    memcpy(tokens[i], current, next-current);
-	    tokens[i][next-current] = '\0';
-	    current = next + 1;   /* move over the space */
-	    ++i;
-
-	    /* trailing token */
-	    if (*current == ':') {
-	        ++current;
-		strcpy(tokens[i], current);
-		++i;
-		done = 1;
-	    }
-	} else {
-	    strcpy(tokens[i], current);
-	    ++i;
-	    done = 1;
-	}
-    }
-
-    return i;
-}
-
-/* int init_server()
- * initialize the server and start listening
- * returns when cannot initialize the server
- */
-int init_server()
-{
-    app_error("Not Implemented");
-    return -1;
 }
