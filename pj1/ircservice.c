@@ -5,6 +5,10 @@
 
 extern struct fdlist *fdl;
 
+int getnames(char channel[MAX_MSG_LEN+1],char buf[MAX_MSG_LEN+1])
+{
+
+}
 int setmessage(int code,char command[MAX_MSG_LEN+1],
              char sendbuf[MAX_MSG_LEN+1],struct fdlist *cur)
 {
@@ -181,10 +185,12 @@ int join(char channel[MAX_MSG_LEN+1],
     printf("%s",channel);
     char channelname[MAX_MSG_LEN+1];
     bzero(&channelname,sizeof(channelname));
-    while(strlen(channelname) == 0) {
+    while(strlen(channelname) == 0)
+    {
         bzero(&channelname,sizeof(channelname));
         char *next = strchr(current, ' ');
-        if (next) {
+        if (next)
+        {
             memcpy(channelname, current, next-current); // get the parameter
             current = next + 1;
         }
@@ -213,7 +219,11 @@ int join(char channel[MAX_MSG_LEN+1],
     char buf[MAX_MSG_LEN+1];
     sprintf(buf, ":%s JOIN %s", cur->nickname, channelname);
     boardcastchannel(buf,channelname);
-
+    bzero(&buf, sizeof(buf));
+    sendmessage(buf,cur->fd);
+    bzero(&buf, sizeof(buf));
+    setmessage(RPL_ENDOFNAMES,channelname,buf,cur);
+    sendmessage(buf,cur->fd);
     return 0;
     app_error("Not Implemented");
     return -1;
