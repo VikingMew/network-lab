@@ -58,16 +58,13 @@ int init_server() {
 
 		if(infd == 0) {
 			continue;
-		} else {
-			printf("rt_network: incoming fd = %d\n", infd);
-		}
-
-		if(infd == tcpsockfd) {
+		} 
+		if(FD_ISSET(tcpsockfd, &fds)) {
 			printf("rt_network: incoming tpc connect\n");
 			ircfd = get_ircfd(infd);
 		} else if (infd == rtsockfd) {
 			// do_routing(infd);
-		} if (infd == ircfd) {
+		} else if (FD_ISSET(ircfd, &fds)) {
 			do_irc(infd);
 		}
 
