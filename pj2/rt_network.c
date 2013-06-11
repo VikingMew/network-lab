@@ -61,11 +61,11 @@ int init_server() {
 		} 
 		if(FD_ISSET(tcpsockfd, &fds)) {
 			printf("rt_network: incoming tpc connect\n");
-			ircfd = get_ircfd(infd);
+			ircfd = get_ircfd(tcpsockfd);
 		} else if (infd == rtsockfd) {
 			// do_routing(infd);
 		} else if (FD_ISSET(ircfd, &fds)) {
-			do_irc(infd);
+			do_irc(ircfd);
 		}
 
 	}
