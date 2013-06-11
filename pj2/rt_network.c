@@ -52,7 +52,7 @@ int init_server() {
 		max_fd = (tcpsockfd > rtsockfd? tcpsockfd : rtsockfd);
 		max_fd = (max_fd > ircfd? max_fd: ircfd) + 1;
 
-		printf("herererererererererer rt_network.c:55\n");
+		// printf("herererererererererer rt_network.c:55\n");
 
 		infd = Select(max_fd, &fds, 0, 0, 0);
 
@@ -67,9 +67,6 @@ int init_server() {
 		} if (infd == ircfd) {
 			do_irc(infd);
 		}
-
-
-
 
 	}
 }
