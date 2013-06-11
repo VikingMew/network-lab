@@ -4,7 +4,7 @@
 // #include "network.h"
 
 extern struct fdlist *fdl;
-
+extern u_long curr_nodeID;
 int setmessage(int code,char command[MAX_MSG_LEN+1],
              char sendbuf[MAX_MSG_LEN+1],struct fdlist *cur)
 {     //all list/who name list/ wont be in the function
@@ -85,6 +85,7 @@ int setmessage(int code,char command[MAX_MSG_LEN+1],
     }
     return 0;
 }
+
 int sendadduser(char nickname[MAX_MSG_LEN+1])
 {
     char recvbuf[MAX_MSG_LEN+1];
@@ -95,16 +96,32 @@ int sendadduser(char nickname[MAX_MSG_LEN+1])
     sendtodaemon(sendbuf,recvbuf);
     return 0;
 }
+
 int reqnexthop(char nickname[MAX_MSG_LEN+1])
 {
     char recvbuf[MAX_MSG_LEN+1];
     char sendbuf[MAX_MSG_LEN+1];
     bzero(&recvbuf, sizeof(recvbuf));
     bzero(&sendbuf, sizeof(sendbuf));
-    sprintf(sendbuf,"ADDUSER %s\r\n",nickname);
+    sprintf(sendbuf,"NEXTHOP %s\r\n",nickname);
     sendtodaemon(sendbuf,recvbuf);
+                //TODO : parse returnd
     return 0;
 }
+
+int reqnexthops(char channel[MAX_MSG_LEN+1],int *nexthop,int *size)
+{
+    char recvbuf[MAX_MSG_LEN+1];
+    char sendbuf[MAX_MSG_LEN+1];
+    bzero(&recvbuf, sizeof(recvbuf));
+    bzero(&sendbuf, sizeof(sendbuf));
+    sprintf(sendbuf,"NEXTHOP %d %s\r\n",curr_nodeID,channel);
+    sendtodaemon(sendbuf,recvbuf);
+                //TODO : parse returnd
+    return 0;
+}
+
+
 int motd(struct fdlist *cur) 
 {
     char buf[MAX_MSG_LEN+1];
@@ -550,12 +567,14 @@ int privmsg(char target[MAX_MSG_LEN+1],
             }
             else
             {
-                reqnexthop(p);
-                //TODO : send via route
-                //TODO : request route
-                //TODO : forward message
+                int nexthop,ret;
+                nexthop = reqnexthop(p);
+                if(nexthop > 0)
+                {
+                    sendtonode(nexthop,send);
+                    tmpsent = 1;
+                }
             }
-
         }
         else
         {
@@ -565,7 +584,10 @@ int privmsg(char target[MAX_MSG_LEN+1],
                 now,
                 p);
             tmpsent += (boardcastchannel(buf,p));
-
+            //send to other hops
+            int size;
+            int* nexthop;
+            reqnexthops(p,nexthop,&size);
             //TODO : send via route
             //TODO : request route
             //TODO : forward message

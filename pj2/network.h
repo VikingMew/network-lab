@@ -12,7 +12,7 @@ struct fdlist
     struct fdlist *next;
 };
 
-int init_listen();
+int init_server();
 int sendmessage(char message[MAX_MSG_LEN+1],int fd);
 int boardcast(char message[MAX_MSG_LEN+1]);
 int boardcastbut(char message[MAX_MSG_LEN+1],int fd);
@@ -20,6 +20,7 @@ int boardcastchannel(char message[MAX_MSG_LEN+1],char channel[MAX_MSG_LEN + 1]);
 
 int existschannel(char channel[MAX_MSG_LEN + 1]);
 int sendtodaemon(char message[MAX_MSG_LEN+1],char recv[MAX_MSG_LEN+1]);
+int sendtonode(int nodeid,char message[MAX_MSG_LEN+1]);
 
 struct fdlist* findbynickname(char nickname[MAX_MSG_LEN + 1]);
 // int writetoallfdbut(char message[MAX_MSG_LEN+1],int fd);

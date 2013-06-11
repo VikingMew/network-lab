@@ -13,6 +13,7 @@
 #define DAEMONFD fdl->next->fd
 // static char  server_ip[MAX_MSG_LEN] = "175.186.60.211";
 extern rt_config_entry_t *curr_node_config_entry;
+extern rt_config_file_t   curr_node_config_file;
 static char  daemon_ip[MAX_MSG_LEN] = "127.0.0.1";
 int server_port;
 int daemon_port;
@@ -41,7 +42,6 @@ int add(int sockfd,char* ipaddress)
     for(;node ->next != 0;node = node->next)
     {
         // assert(node->fd != sockfd);
-
     }
     struct fdlist *cur;
     cur = (struct fdlist *)malloc(sizeof(struct fdlist));
@@ -121,6 +121,31 @@ int connect_daemon(int dport) {
     }
     return daemonfd;
 }
+
+int connect_node(int nodeid) {
+
+    int i;
+    rt_config_entry_t *tmpentry;
+    for( i = 0; i < curr_node_config_file.size; ++i )
+        if( curr_node_config_file.entries[i].nodeID ==nodeid)
+             tmpentry = &curr_node_config_file.entries[i];
+    int nodefd;
+    struct sockaddr_in servaddr;
+    nodefd = Socket(AF_INET, SOCK_STREAM, 0);
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(tmpentry->irc_port);
+    inet_aton(tmpentry->ipaddr, &servaddr.sin_addr);
+    printf( "connect to node IP %d\n", servaddr.sin_addr.s_addr );
+    Connect(nodefd, (struct sockaddr* )&servaddr, sizeof(servaddr));
+    // should set sock to be non-blocking
+    if (fcntl(nodefd, F_SETFL, O_NONBLOCK) < 0){
+        perror("fcntl (set non-blocking)");
+        exit(1);
+    }
+    return nodefd;
+}
+
 int init_server()
 {
     int sockfd;
@@ -279,4 +304,11 @@ int existschannel(char channel[MAX_MSG_LEN + 1])
         }
     }
     return 0;
+}
+
+int sendtonode(int nodeid,char message[MAX_MSG_LEN+1])
+{
+    int nodefd = connect_node(nodeid);
+    Rio_writen(nodefd,message,strlen(message));
+    Close(nodefd);
 }
