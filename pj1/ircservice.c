@@ -8,7 +8,7 @@ extern struct fdlist *fdl;
 
 int setmessage(int code,char command[MAX_MSG_LEN+1],
              char sendbuf[MAX_MSG_LEN+1],struct fdlist *cur)
-{
+{     //all list/who name list/ wont be in the function
     if(code == RPL_MOTDSTART)
     {
         sprintf(sendbuf,":%s 375 %s :- %s Message of the day -\r\n",
@@ -49,6 +49,32 @@ int setmessage(int code,char command[MAX_MSG_LEN+1],
         sprintf(sendbuf,":%s 315 %s %s :End of /WHO list\r\n",
             SERVERNAME,cur->nickname,command);
     }
+    if(code == ERR_NOSUCHSERVER) //'command' is server name!!!!
+    {
+        sprintf(sendbuf,":%s 402 %s %s :No such server\r\n",
+            SERVERNAME,cur->nickname,command);
+    }
+    if(code == RPL_LISTSTART)
+    {
+        sprintf(sendbuf,":%s 321 %s Channel :Users Name\r\n",
+            SERVERNAME,cur->nickname);
+    }
+    if(code == RPL_LISTEND)
+    {
+        sprintf(sendbuf,":%s 323 %s :End of /LIST\r\n",
+            SERVERNAME,cur->nickname);
+    }
+    if(code == ERR_NOSUCHNICK) //'command' is target name!!!!
+    {
+        sprintf(sendbuf,":%s 401 %s %s :No such nick/channel\r\n",
+            SERVERNAME,cur->nickname,command);
+    }
+    if(code == ERR_NOSUCHNICK) //'command' is target name!!!!
+    {
+        sprintf(sendbuf,":%s 412 %s :No text to send\r\n",
+            SERVERNAME,cur->nickname);
+    }
+    return 0;
 }
 
 int motd(struct fdlist *cur) 
@@ -127,7 +153,7 @@ int user(char username[MAX_MSG_LEN+1],
     strcpy(cur->username,username);
     strcpy(cur->hostname,cur->ipaddress); //15-441
     strcpy(cur->servername,username);
-    strcpy(cur->username,username);
+    strcpy(cur->realname,realname);
     if(strlen(cur->nickname))
     {
         motd(cur);
@@ -205,6 +231,7 @@ int names(char channel[MAX_MSG_LEN+1],struct fdlist *cur)
     bzero(&buf, sizeof(buf));
     setmessage(RPL_ENDOFNAMES,channel,buf,cur);
     sendmessage(buf,cur->fd);
+    return 0;
 }
 /* int join()
  *
@@ -235,6 +262,7 @@ int join(char channel[MAX_MSG_LEN+1],
         if (next)
         {
             memcpy(channelname, current, next-current); // get the parameter
+            channelname[next-current] = '\0';
             current = next + 1;
         }
         else 
@@ -292,9 +320,57 @@ int part()
  * return ?? when error
  * return 0 on success
  */
-int list()
+int list(char channels[MAX_MSG_LEN+1], //ignore by 15-441
+         char server[MAX_MSG_LEN+1],   //ignore by 15-441
+         struct fdlist *cur)
 {
-
+    //"<channel> <# visible> :<topic>"
+    char buf[MAX_MSG_LEN+1];
+    bzero(&buf, sizeof(buf));
+    setmessage(RPL_LISTSTART,"",buf,cur);
+    sendmessage(buf,cur->fd);
+    char channellist[200][MAX_MSG_LEN+1];
+    int usercount[200];
+    int channelcount = 0;
+    bzero(&channellist, sizeof(channellist));
+    bzero(&usercount, sizeof(usercount));
+    struct fdlist *now = fdl;
+    while(now->next != 0)
+    {
+        int inlist = 0;
+        int i;
+        for(i = 0;i < channelcount; i++)
+        {
+            if(!strcmp(channellist[i],now->next->channel))
+            {
+                inlist = 1;
+                usercount[i] += 1;
+                break;
+            }
+        }
+        if(!inlist)
+        {
+            strcpy(channellist[channelcount],now->next->channel);
+            usercount[channelcount] += 1;
+            channelcount++;
+        }
+        now = now -> next;
+    }
+    int i = 0;
+    for(i = 0;i < channelcount;i++) 
+    {
+        bzero(&buf, sizeof(buf));
+        sprintf(buf,":%s 322 %s %s %d\r\n",
+                    SERVERNAME,
+                    cur->nickname,
+                    channellist[i],
+                    usercount[i]);
+        sendmessage(buf,cur->fd);
+    }
+    bzero(&buf, sizeof(buf));
+    setmessage(RPL_LISTEND,"",buf,cur);
+    sendmessage(buf,cur->fd);
+    return 0;
     app_error("Not Implemented");
     return -1;
 }
@@ -310,8 +386,51 @@ int list()
  * return ?? when error
  * return 0 on success
  */
-int privmsg()
+int privmsg(char target[MAX_MSG_LEN+1],
+            char message[MAX_MSG_LEN+1],
+            struct fdlist *cur)
 {
+    printf("privmsg!!%s!\n",message);
+    if(!strlen(message))
+    {
+        return ERR_NOTEXTTOSEND;
+    }
+    int issent = 0;
+    // char targetlist[200][MAX_MSG_LEN+1];
+    char buf[MAX_MSG_LEN+1];
+    int i = 0;
+    char* now = message;
+    char* p;
+    bzero(&buf, sizeof(buf));
+    while(p = strsep(&now,","))
+    {
+        struct fdlist *node = findbynickname(p);
+        if(node != 0)
+        {
+            bzero(&buf, sizeof(buf));
+            sprintf(buf,":%s PRIVMSG %s :%s\r\n",
+                        cur->nickname,
+                        node->nickname,
+                        message);
+            sendmessage(buf,node->fd);
+            issent = 1;
+        }
+        bzero(&buf, sizeof(buf));
+        sprintf(buf,":%s PRIVMSG %s :%s\r\n",
+            cur->nickname,
+            now,
+            p);
+        issent += (boardcastchannel(buf,p));
+        // now = p;
+    }
+
+    if(!issent)
+    {
+        bzero(&buf, sizeof(buf));
+        setmessage(ERR_NOSUCHNICK,"",buf,cur);
+        sendmessage(buf,cur->fd);
+    }
+    return 0;
     app_error("Not Implemented");
     return -1;
 }
@@ -330,8 +449,9 @@ int who(char request[MAX_MSG_LEN+1],
         struct fdlist *cur)
 {
     // char channelist[200][MAX_MSG_LEN+1]; //200 is the maxmium to the channel 
-    char requestlist[200][MAX_MSG_LEN+1];
-    bzero(&channellist,sizeof(channellist));
+    // char requestlist[200][MAX_MSG_LEN+1];
+    // bzero(&channellist,sizeof(channellist));
+    char buf[MAX_MSG_LEN + 1];
     if(!strlen(request))
     {
         struct fdlist *now = fdl;
@@ -341,25 +461,45 @@ int who(char request[MAX_MSG_LEN+1],
             sprintf(buf,":%s 352 %s %s %s %s %s %s H :0 %s\r\n",
                         SERVERNAME,
                         cur->nickname,
-                        now->channel,
-                        now->username,
-                        now->hostname,
-                        now->servername,
-                        now->nickname,
-                        now->realname);
+                        now->next->channel,
+                        now->next->username,
+                        now->next->hostname,
+                        now->next->servername,
+                        now->next->nickname,
+                        now->next->realname);
             sendmessage(buf,cur->fd);
             now = now -> next;
         }
         bzero(&buf, sizeof(buf));
-        setmessage(RPL_ENDOFWHO,channel,buf,cur);
+        setmessage(RPL_ENDOFWHO,request,buf,cur);
         sendmessage(buf,cur->fd);
     }
     else
     {
-
+        struct fdlist *now = fdl;
+        while(now->next != 0)
+        {
+            if(!strcmp(request,now->next->channel))
+            {
+            bzero(&buf, sizeof(buf));
+            sprintf(buf,":%s 352 %s %s %s %s %s %s H :0 %s\r\n",
+                        SERVERNAME,
+                        cur->nickname,
+                        now->next->channel,
+                        now->next->username,
+                        now->next->hostname,
+                        now->next->servername,
+                        now->next->nickname,
+                        now->next->realname);
+            sendmessage(buf,cur->fd);
+            }
+            now = now -> next;
+        }
+        bzero(&buf, sizeof(buf));
+        setmessage(RPL_ENDOFWHO,request,buf,cur);
+        sendmessage(buf,cur->fd);
     }
-    app_error("Not Implemented");
-    return -1;
+    return 0;
 }
 
 
@@ -421,6 +561,14 @@ int parse_msg(char token[MAX_MSG_TOKENS][MAX_MSG_LEN+1],
     if(!strcmp(token[0],"WHO"))
     {
         i = who(token[1],token[2],cur);
+    }
+    if(!strcmp(token[0],"LIST"))
+    {
+        i = list(token[1],token[2],cur);
+    }
+    if(!strcmp(token[0],"PRIVMSG"))
+    {
+        i = privmsg(token[1],token[2],cur);
     }
     setmessage(i,token[0],sendbuf,cur);
     return i;

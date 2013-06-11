@@ -262,6 +262,7 @@ class IRC
 
   def reply_matches(rexp, explanation = nil)
     data = recv_data_from_server(1)
+    puts data
     if (rexp =~ data[0])
       puts "\t #{explanation} correct" if explanation
       return true
@@ -313,14 +314,14 @@ irc = IRC.new($SERVER, $PORT, '', '')
 irc.connect()
 begin
 
-  ########## TEST NICK COMMAND ##########################
-  # The RFC states that there is no response to a NICK command,
-  # so we test for this.
-  tn = test_name("NICK")
-  irc.send_nick("gnychis")
-  puts "<-- Testing for silence (5 seconds)..."
+  # ########## TEST NICK COMMAND ##########################
+  # # The RFC states that there is no response to a NICK command,
+  # # so we test for this.
+  # tn = test_name("NICK")
+  # irc.send_nick("gnychis")
+  # puts "<-- Testing for silence (5 seconds)..."
 
-  eval_test(tn, nil, nil, irc.test_silence(5))
+  # eval_test(tn, nil, nil, irc.test_silence(1))
 
 
   ############## TEST USER COMMAND ##################
@@ -338,7 +339,7 @@ begin
   puts "<-- Testing for silence (5 seconds)..."
 
   eval_test(tn, nil, "should not return a response on its own", 
-            irc.test_silence(5))
+            irc.test_silence(1))
 
   ############# TEST FOR REGISTRATION ##############
   # A NICK+USER is a registration that triggers the
@@ -350,31 +351,31 @@ begin
 
   eval_test(tn, nil, nil, irc.get_motd())
 
-  ############## TEST JOINING ####################
-  # We join a channel and make sure the client gets
-  # his join echoed back (which comes first), then
-  # gets a names list.
-  tn = test_name("JOIN")
-  eval_test(tn, nil, nil,
-            irc.join_channel("gnychis", "#linux"))
+  # ############## TEST JOINING ####################
+  # # We join a channel and make sure the client gets
+  # # his join echoed back (which comes first), then
+  # # gets a names list.
+  # tn = test_name("JOIN")
+  # eval_test(tn, nil, nil,
+  #           irc.join_channel("gnychis", "#linux"))
 
-  ############## WHO ####################
-  # Who should list everyone in a channel
-  # or everyone on the server.  We are only
-  # checking WHO <channel>.
-  # The response should follow the RFC.
-  tn = test_name("WHO")
-  eval_test(tn, nil, nil, irc.who("#linux"))
+  # ############## WHO ####################
+  # # Who should list everyone in a channel
+  # # or everyone on the server.  We are only
+  # # checking WHO <channel>.
+  # # The response should follow the RFC.
+  # tn = test_name("WHO")
+  # eval_test(tn, nil, nil, irc.who("#linux"))
 
-  ############## LIST ####################
-  # LIST is used to check all the channels on a server.
-  # The response should include #linux and its format should follow the RFC.
-  tn = test_name("LIST")
-  eval_test(tn, nil, nil, irc.list())
+  # ############## LIST ####################
+  # # LIST is used to check all the channels on a server.
+  # # The response should include #linux and its format should follow the RFC.
+  # tn = test_name("LIST")
+  # eval_test(tn, nil, nil, irc.list())
 
-  ############## PRIVMSG ###################
-  # Connect a second client that sends a message to the original client.
-  # Test that the original client receives the message.
+  # ############## PRIVMSG ###################
+  # # Connect a second client that sends a message to the original client.
+  # # Test that the original client receives the message.
   tn = test_name("PRIVMSG")
   irc2 = IRC.new($SERVER, $PORT, '', '')
   irc2.connect()
@@ -384,14 +385,14 @@ begin
   irc2.send_privmsg("gnychis", msg)
   eval_test(tn, nil, nil, irc.checkmsg("gnychis2", "gnychis", msg))
 
-  ############## ECHO JOIN ###################
-  # When another client joins a channel, all clients
-  # in that channel should get :newuser JOIN #channel
-  tn = test_name("ECHO ON JOIN")
-  # "raw" means no testing of responses done
-  irc2.raw_join_channel("gnychis2", "#linux")
-  irc2.ignore_reply()
-  eval_test(tn, nil, nil, irc.check_echojoin("gnychis2", "#linux"))
+  # ############## ECHO JOIN ###################
+  # # When another client joins a channel, all clients
+  # # in that channel should get :newuser JOIN #channel
+  # tn = test_name("ECHO ON JOIN")
+  # # "raw" means no testing of responses done
+  # irc2.raw_join_channel("gnychis2", "#linux")
+  # irc2.ignore_reply()
+  # eval_test(tn, nil, nil, irc.check_echojoin("gnychis2", "#linux"))
 
 
   ############## MULTI-TARGET PRIVMSG ###################
@@ -399,11 +400,11 @@ begin
   # multiple targets, with ',' as a delimiter.
   # We use client2 to send a message to gnychis and #linux.
   # Both should receive the message.
-  tn = test_name("MULTI-TARGET PRIVMSG")
-  msg = "awesome blossom with extra awesome"
-  irc2.send_privmsg("gnychis,#linux", msg)
-  eval_test(tn, nil, nil, irc.check2msg("gnychis2", "gnychis", "#linux", msg))
-  irc2.ignore_reply()
+  # tn = test_name("MULTI-TARGET PRIVMSG")
+  # msg = "awesome blossom with extra awesome"
+  # irc2.send_privmsg("gnychis,#linux", msg)
+  # eval_test(tn, nil, nil, irc.check2msg("gnychis2", "gnychis", "#linux", msg))
+  # irc2.ignore_reply()
 
   ############## PART ###################
   # When a client parts a channel, a QUIT message

@@ -771,9 +771,13 @@ int open_listenfd(int port)
     if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, 
 		   (const void *)&optval , sizeof(int)) < 0)
 	return -1;
+    optval = 1;
+    if (0 > (optval = fcntl(listenfd, F_GETFL)))
+        printf("Error\n");
+    optval = (optval | O_NONBLOCK);
+    if (fcntl(listenfd, F_SETFL, optval))
+        printf("Error\n");
 
-    /* Listenfd will be an endpoint for all requests to port
-       on any IP address for this host */
     bzero((char *) &serveraddr, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET; 
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY); 

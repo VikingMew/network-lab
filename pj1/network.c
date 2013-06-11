@@ -70,12 +70,12 @@ struct fdlist* findbynickname(char nickname[MAX_MSG_LEN + 1])
 {
     struct fdlist *node;
     node = fdl;
-    for(;node ->next != 0;node = node -> next)
+    for(;node != 0 && node ->next != 0;node = node -> next)
     {
         // assert(node -> next != 0);
-        if(!strcmp(node->nickname,nickname)) 
+        if(!strcmp(node->next->nickname,nickname)) 
         {
-            return node;
+            return node->next;
         }
     }
     return 0;
@@ -111,32 +111,35 @@ int init_server()
     struct fdlist *cur;
 
     sockfd = Open_listenfd(server_port);
-    int opts = 1;
-    setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&opts,sizeof(opts));
+    // int opts = 1;
+    // setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&opts,sizeof(opts));
     init(sockfd);
     FD_ZERO(&fds);
     while(1)
     {
+        FD_ZERO(&fds);
         // FD_SET(sockfd, &fds);
-        max_fd = addtoset(&fds)+1;
+        max_fd = addtoset(&fds) + 1;
         // printf("max:%d\n",max_fd);
         ready = Select(max_fd, &fds, 0, 0, 0);
         if(ready == 0){
             continue;
         }
-        for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
+        int dealed = 0;
+        for(cur = fdl;cur != 0 && cur -> next != 0 && !dealed;cur = cur -> next)
         {
             int fd = cur->next->fd;
             if(FD_ISSET(fd,&fds)) {
-                // printf("select!:%d\n",cur->fd);
+                printf("select!:%d\n",cur->next->fd);
                 if(thread(cur->next) == -1) {
                     printf("delete!%d\n",fd);
                     Close(fd);
                     delete(fd);
                 }
+                dealed = 1;
             }
         }
-        if(FD_ISSET(sockfd, &fds)){
+        if(FD_ISSET(sockfd, &fds) && !dealed){
             printf("detect!\n");
             csock = Accept(sockfd, (struct sockaddr*) &caddr, &size);
             if(getpeername(csock, (struct sockaddr*) &caddr, &size) == 0)
@@ -165,7 +168,8 @@ int thread(struct fdlist *cur)
     int length = 1;
     bzero(&recvbuf, sizeof(recvbuf));
     bzero(&sendbuf, sizeof(sendbuf));
-    length = Rio_readlineb(&rp,recvbuf,MAX_MSG_LEN);
+    length = rio_readlineb(&rp,recvbuf,MAX_MSG_LEN);
+    if(length<=0) printf("end!!!");
     int i  = irc(recvbuf,sendbuf,cur);
     if(i == RPL_CLOSING) {
         ret = -1;
@@ -198,16 +202,18 @@ int boardcastbut(char message[MAX_MSG_LEN+1],int fd) // wont boardcast to fd
 int boardcastchannel(char message[MAX_MSG_LEN+1],char channel[MAX_MSG_LEN + 1])
 {
     struct fdlist *cur;
+    int issent = 0;
     for(cur = fdl;cur != 0 && cur -> next != 0;cur = cur -> next)
     {
         if (!strcmp(channel,cur->next->channel)) {
-            Rio_writen(cur->next->fd,message,strlen(message));
+            rio_writen(cur->next->fd,message,strlen(message));
+            issent = 1;
         }
     }
-    return 0;
+    return issent;
 }
 int sendmessage(char message[MAX_MSG_LEN+1],int fd)
 {
-    Rio_writen(fd,message,strlen(message));
+    rio_writen(fd,message,strlen(message));
     return 0;
 }
