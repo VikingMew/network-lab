@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "rtgrading.h"
+#include "rtlib.h"
 
 void rt_init(int argc, char **argv)
 {

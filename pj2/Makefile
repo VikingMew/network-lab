@@ -1,4 +1,5 @@
 TARGET 	= sircd
+TARGET2 = srouted
 
 CC		= gcc
 LD		= gcc
@@ -8,9 +9,22 @@ LFLAGS	=
 LIBS	= -lpthread
 
 OBJECTS = sircd.o rtlib.o rtgrading.o csapp.o network.o ircservice.o 
+OBJECTS2 = srouted.o rtlib.o rtgrading.o csapp.o irc.o rt_network.o
 
 $(TARGET): $(OBJECTS)
 	$(LD) $(LFLAGS)  -o $@ $^ $(LIBS)
+
+$(TARGET2): $(OBJECTS2)
+	$(LD) $(LFLAGS)  -o $@ $^ $(LIBS)
+
+srouted.o: srouted.c srouted.h rtlib.h rtgrading.h csapp.h 
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+irc.o: irc.c irc.h csapp.h rtlib.h srouted.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+rt_network.o: rt_network.c rt_network.h irc.h routing.h srouted.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 sircd.o: sircd.c rtlib.h rtgrading.h csapp.h
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -30,5 +44,6 @@ csapp.o: csapp.c csapp.h
 clean:
 	rm -f *.o
 	rm -f $(TARGET)
+	rm -f $(TARGET2)
 
 .PHONY: clean

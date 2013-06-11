@@ -144,6 +144,7 @@ void rt_parse_config_file(const char *cmd, rt_config_file_t *config,
 	}
 	/* skip blank lines */
 	if (line[0] == '\n') {
+
 	    continue;
 	}
 
