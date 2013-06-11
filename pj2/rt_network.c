@@ -58,6 +58,8 @@ int init_server() {
 
 		if(infd == 0) {
 			continue;
+		} else {
+			printf("rt_network: incoming fd = %d\n", infd);
 		}
 
 		if(infd == tcpsockfd) {
