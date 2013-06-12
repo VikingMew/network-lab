@@ -30,7 +30,7 @@
  * initialize with local server and default irc server port
  */
 static char  server_ip[MAX_MSG_LEN] = "127.0.0.1";
-int          server_port = 6667;
+int          server_port = 20101;
 
 /*
  * usage(): display usage info about the client

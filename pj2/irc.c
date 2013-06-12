@@ -6,6 +6,7 @@
 #include "rtlib.h"
 
 #include "irc.h"
+#include "routing.h"
 
 /* Global variables */
 
@@ -29,21 +30,33 @@ void next_hops(int fd, int source_id, const char *channel, char *sendbuf);
 void user_table(int fd, char *sendbuf);
 void channel_table(int fd, char *sendbuf);
 
+/* Declare Helper Functions */
+void trim(char* buf, char* msg);
+int tokenize(char const *in_buf, char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1]);
+void read_msg(int fd, char *recvbuf);
+void parse_msg(char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1], int length, char *sendbuf, int fd);
+
 /* Implements */
 
 void do_irc(int fd) {
 
     char recvbuf[MAX_MSG_LEN + 1];
+    char recvbuf2[MAX_MSG_LEN+1];
     char sendbuf[MAX_MSG_LEN + 1];
+
     char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1];
     int length;
 
     bzero(&recvbuf, sizeof(recvbuf));
     bzero(&sendbuf, sizeof(sendbuf));
 
-   	read_msg(fd, recvbuf, sendbuf);
+   	read_msg(fd, recvbuf);
 
-   	length = tokenize(recvbuf, tokens);
+    bzero(&recvbuf2, sizeof(recvbuf2));
+
+    trim(recvbuf, recvbuf2);
+
+   	length = tokenize(recvbuf2, tokens);
 
    	parse_msg(tokens, length, sendbuf, fd);
 
@@ -98,7 +111,7 @@ void parse_msg(char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1],
     } else
     if(!strcmp(tokens[0],"REMOVEUSER"))
     {
-    	remove_channel(fd, tokens[1], sendbuf);
+    	remove_user(fd, tokens[1], sendbuf);
     } else
     if(!strcmp(tokens[0],"REMOVECHAN"))
     {
@@ -127,6 +140,28 @@ void parse_msg(char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN+1],
 
 void add_user(int fd, const char *nick, char *sendbuf) {
 
+    node_t *node;
+
+    printf("Adding New User %s\n", nick);
+
+    for (node = LocalIRCList.UserList.header; node != NULL; node = node->next) {
+        printf("Existing User: %s", node->data);
+        if (!strcasecmp(node->data, nick)) {
+            printf("...Already Added!\n");
+            goto Existing_User;
+        }
+        printf("\n");
+    }
+    node = malloc(sizeof(node_t));
+    node->data = strdup(nick);
+    node->next = LocalIRCList.UserList.header;
+    LocalIRCList.UserList.header = node;
+    LocalIRCList.UserList.Count++;
+    printf("Added User: %s\n", node->data);
+
+    // BroadcastSelf();
+
+Existing_User:
 	sprintf(sendbuf, "OK\r\n");
 	Rio_writen(fd, sendbuf, strlen(sendbuf));
 	return;
@@ -134,6 +169,28 @@ void add_user(int fd, const char *nick, char *sendbuf) {
 }
 void add_channel(int fd, const char *channel, char *sendbuf) {
 
+    node_t *node;
+
+    printf("Adding New Channel %s\n", channel);
+
+    for (node = LocalIRCList.ChannelList.header; node != NULL; node = node->next)
+    {
+        printf("Existing Channel: %s", node->data);
+        if (!strcasecmp(node->data, channel)) {
+            printf("...Already Added!\n");
+            goto Existing_Channel;
+        }
+        printf("\n");
+    }
+    node = malloc(sizeof(node_t));
+    node->data = strdup(channel);
+    node->next = LocalIRCList.ChannelList.header;
+    LocalIRCList.ChannelList.header = node;
+    LocalIRCList.ChannelList.Count++;
+    printf("Added Channel: %s\n", node->data);
+    //BroadcastSelf();
+
+Existing_Channel:
 	sprintf(sendbuf, "OK\r\n");
 	Rio_writen(fd, sendbuf, strlen(sendbuf));
 	return;
@@ -141,16 +198,72 @@ void add_channel(int fd, const char *channel, char *sendbuf) {
 }
 void remove_user(int fd, const char *nick, char *sendbuf) {
 
-	sprintf(sendbuf, "OK\r\n");
-	Rio_writen(fd, sendbuf, strlen(sendbuf));
+    node_t *prev, *node;
+
+    printf("Removing User %s\n", nick);
+
+    for (prev = NULL, node = LocalIRCList.UserList.header; node != NULL; prev = node, node = node->next) {
+        printf("Existing User: %s", node->data);
+        if (strcasecmp(node->data, nick) == 0) {
+            printf("...Found!\n");
+            break;
+        }
+        printf("\n");
+    }
+    if (node != NULL) {
+        if (prev == NULL)
+            LocalIRCList.UserList.header = node->next;
+        else
+            prev->next = node->next;
+        LocalIRCList.UserList.Count--;
+
+        printf("Removed User: %s\n", node->data);
+        free(node->data);
+        free(node);       
+        // BroadcastSelf();
+        sprintf(sendbuf, "OK\r\n");
+        Rio_writen(fd, sendbuf, strlen(sendbuf));
+        return;
+    }
+    printf("Cannot Find User\n");
+    sprintf(sendbuf, "OK\r\n");
+    Rio_writen(fd, sendbuf, strlen(sendbuf));
 	return;
 
 }
 void remove_channel(int fd, const char *channel, char *sendbuf) {
 
-	sprintf(sendbuf, "OK\r\n");
-	Rio_writen(fd, sendbuf, strlen(sendbuf));
-	return;
+    node_t *prev, *node;
+
+    printf("Removing Channel %s\n", channel);
+
+    for (prev = NULL, node = LocalIRCList.ChannelList.header; node != NULL; prev = node, node = node->next) {
+        printf("Existing Channel: %s", node->data);
+        if (strcasecmp(node->data, channel) == 0) {
+            printf("...Found!\n");
+            break;
+        }
+        printf("\n");
+    }
+    if (node != NULL) {
+        if (prev == NULL)
+            LocalIRCList.ChannelList.header = node->next;
+        else
+            prev->next = node->next;
+        LocalIRCList.ChannelList.Count--;
+
+        printf("Removed Channel: %s\n", node->data);
+        free(node->data);
+        free(node);       
+        // BroadcastSelf();
+        sprintf(sendbuf, "OK\r\n");
+        Rio_writen(fd, sendbuf, strlen(sendbuf));
+        return;
+    }
+    printf("Cannot Find Channel\n");
+    sprintf(sendbuf, "OK\r\n");
+    Rio_writen(fd, sendbuf, strlen(sendbuf));
+    return;
 	
 }
 void next_hop(int fd, const char *nick, char *sendbuf) {
@@ -167,7 +280,7 @@ void channel_table(int fd, char *sendbuf) {
 }
 
 
-size_t get_msg(char *buf, char *msg)
+void trim(char *buf, char *msg)
 {
     char *end;
     int  len;
@@ -186,14 +299,14 @@ size_t get_msg(char *buf, char *msg)
     if( end )
         len = end - buf + 1;
     else
-        return -1;
+        return;
     }
 
     /* found a complete message */
     memcpy(msg, buf, len);
     msg[end-buf] = '\0';
 
-    return len; 
+    return; 
 }
 
 void read_msg(int fd, char *recvbuf)
