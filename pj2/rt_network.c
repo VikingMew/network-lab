@@ -20,6 +20,11 @@ extern unsigned long curr_node_neighbor_timeout;         /* -n timeout for dead 
 extern unsigned long curr_node_retransmission_timeout;   /* -r timeout for retransmission */
 extern unsigned long curr_node_lsa_timeout;              /* -t timeout to expire an LSA */
 
+/* Declare Network Functions */
+int open_tcp();
+int open_udp();
+int get_ircfd(int fd);
+
 int ircfd = -1;
 
 int init_server() {
@@ -33,6 +38,8 @@ int init_server() {
 
 	int infd;
 
+	InitializeLSA();
+
 	tcpsockfd = open_tcp();
 	rtsockfd = open_udp();
 	printf("herererererererererer rt_network.c:38 tcpsockfd = %d, rtsockfd = %d\n", tcpsockfd, rtsockfd);
@@ -45,7 +52,7 @@ int init_server() {
 		FD_SET(tcpsockfd, &fds);
 		FD_SET(rtsockfd, &fds);
 		if(ircfd > 0) {
-			printf("rt_network.c:48 ircfd = %d\n", ircfd);
+			// printf("rt_network.c:48 ircfd = %d\n", ircfd);
 			FD_SET(ircfd, &fds);
 		}
 
@@ -60,15 +67,16 @@ int init_server() {
 			continue;
 		} 
 		if(FD_ISSET(tcpsockfd, &fds)) {
-			printf("rt_network: incoming tpc connect\n");
+			printf("rt_network: incoming tcp connection\n");
 			ircfd = get_ircfd(tcpsockfd);
 		} else if (infd == rtsockfd) {
-			// do_routing(infd);
+			do_routing(infd);
 		} else if (FD_ISSET(ircfd, &fds)) {
 			do_irc(ircfd);
 		}
 
 	}
+	return 0;
 }
 
 int open_tcp() {
@@ -76,9 +84,8 @@ int open_tcp() {
 }
 
 int open_udp() {
-	int sockfd, clilen, i;
-	struct sockaddr_in serv_addr, cli_addr;
-	struct packet incomingPacket;  // Temporary place to store incoming packet
+	int sockfd;
+	struct sockaddr_in serv_addr;
 
 	// setup the socket
 

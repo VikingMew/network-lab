@@ -9,7 +9,7 @@ LFLAGS	=
 LIBS	= -lpthread
 
 OBJECTS = sircd.o rtlib.o rtgrading.o csapp.o network.o ircservice.o 
-OBJECTS2 = srouted.o rtlib.o rtgrading.o csapp.o irc.o rt_network.o
+OBJECTS2 = srouted.o rtlib.o rtgrading.o csapp.o irc.o rt_network.o routing.o
 
 $(TARGET): $(OBJECTS)
 	$(LD) $(LFLAGS)  -o $@ $^ $(LIBS)
@@ -20,10 +20,13 @@ $(TARGET2): $(OBJECTS2)
 srouted.o: srouted.c srouted.h rtlib.h rtgrading.h csapp.h 
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-irc.o: irc.c irc.h csapp.h rtlib.h srouted.h
+irc.o: irc.c irc.h csapp.h rtlib.h srouted.h routing.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 rt_network.o: rt_network.c rt_network.h irc.h routing.h srouted.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+routing.o: routing.c routing.h csapp.h rtgrading.h rtlib.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 sircd.o: sircd.c rtlib.h rtgrading.h csapp.h
