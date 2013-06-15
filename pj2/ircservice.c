@@ -109,15 +109,36 @@ int reqnexthop(char nickname[MAX_MSG_LEN+1])
     return 0;
 }
 
-int reqnexthops(char channel[MAX_MSG_LEN+1],int *nexthop,int *size)
+int reqnexthops(char channel[MAX_MSG_LEN+1],int srcid,int *nexthop,int *size)
 {
     char recvbuf[MAX_MSG_LEN+1];
     char sendbuf[MAX_MSG_LEN+1];
+    char tokens[MAX_MSG_TOKENS][MAX_MSG_LEN + 1];
     bzero(&recvbuf, sizeof(recvbuf));
     bzero(&sendbuf, sizeof(sendbuf));
-    sprintf(sendbuf,"NEXTHOP %d %s\r\n",curr_nodeID,channel);
+    bzero(&tokens, sizeof(tokens));
+    sprintf(sendbuf,"NEXTHOP %d %s\r\n",srcid,channel);
     sendtodaemon(sendbuf,recvbuf);
-                //TODO : parse returnd
+    tokenize(recvbuf,tokens);
+    if(!strcmp(tokens[0],"OK"))
+    {
+        int count= 0,i;
+        while(strlen(tokens[++count]));
+        *nexthop = (int *)malloc(sizeof(int) * (count-1))
+        int* cur = nexthop;
+        for(i = 0;i < count;i++)
+        {
+            *cur = atol(tokens[i]);
+            cur++;
+        }
+    }
+    else
+    {
+        *size = 0;
+        nexthop = 0;
+        return -1;
+    }
+    //TODO : parse returnd
     return 0;
 }
 
@@ -587,7 +608,7 @@ int privmsg(char target[MAX_MSG_LEN+1],
             //send to other hops
             int size;
             int* nexthop;
-            reqnexthops(p,nexthop,&size);
+            reqnexthops(p,curr_nodeID,nexthop,&size);
             //TODO : send via route
             //TODO : request route
             //TODO : forward message
